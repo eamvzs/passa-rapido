@@ -38,6 +38,7 @@ revoke execute on function fn_confirmar_relato(bigint, uuid) from public, anon, 
 revoke execute on procedure prc_recalcular_situacao(bigint, timestamptz) from public, anon, authenticated;
 revoke execute on procedure prc_expirar_registros(timestamptz, interval) from public, anon, authenticated;
 revoke execute on procedure prc_consolidar_historico(integer) from public, anon, authenticated;
+revoke execute on procedure prc_simular_movimento(integer) from public, anon, authenticated;
 
 -- Segurança por linha.
 alter table tipo_unidade          enable row level security;
@@ -115,3 +116,7 @@ alter publication supabase_realtime add table relato;
 create extension if not exists pg_cron;
 select cron.schedule('passa-rapido-expirar',    '*/10 * * * *', 'call prc_expirar_registros()');
 select cron.schedule('passa-rapido-consolidar', '15 6 * * *',   'call prc_consolidar_historico(60)');
+
+-- Somente para demonstração: movimento simulado a cada 5 minutos.
+-- Para desligar: select cron.unschedule('passa-rapido-simulador');
+select cron.schedule('passa-rapido-simulador',  '*/5 * * * *',  'call prc_simular_movimento(4)');

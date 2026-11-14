@@ -207,6 +207,62 @@ begin
 end;
 $$;
 
+-- Simulador de movimento para demonstração.
+-- Gera registros de usuários fictícios em unidades abertas, com espera próxima da média histórica
+-- do horário. Passa pelos mesmos triggers dos registros reais, então o mapa se atualiza sozinho.
+-- Desligar em produção: select cron.unschedule('passa-rapido-simulador');
+create or replace procedure prc_simular_movimento(p_quantidade integer default 4)
+language plpgsql security definer set search_path = public as $$
+declare
+    c_alvos cursor for
+        select u.id as unidade_id,
+               coalesce(h.media_espera_min, 30) as media
+          from unidade u
+          left join historico_espera h
+                 on h.unidade_id = u.id
+                and h.dia_semana = fn_dia_semana_local(now())
+                and h.hora = fn_hora_local(now())
+         where u.ativo
+           and fn_unidade_aberta(u.id)
+           and exists (select 1 from historico_espera x where x.unidade_id = u.id)
+         order by random()
+         limit p_quantidade;
+    v_usuario  uuid;
+    v_espera   integer;
+    v_tamanho  text;
+    v_registro bigint;
+begin
+    for alvo in c_alvos loop
+        begin
+            select id into v_usuario
+              from usuario
+             where id::text like '00000000-0000-4000-8000-%'
+             order by random()
+             limit 1;
+            exit when v_usuario is null;
+
+            v_espera := greatest(0, round(alvo.media * (0.6 + random() * 0.9)))::integer;
+            v_tamanho := case when v_espera <= 5 then 'sem_fila' when v_espera <= 25 then 'curta'
+                              when v_espera <= 60 then 'media' when v_espera <= 110 then 'longa'
+                              else 'lotada' end;
+
+            if random() < 0.5 then
+                insert into registro_fila (unidade_id, usuario_id, tipo, tamanho_fila)
+                values (alvo.unidade_id, v_usuario, 'observacao', v_tamanho);
+            else
+                insert into registro_fila (unidade_id, usuario_id, tipo, tamanho_fila, chegada_em)
+                values (alvo.unidade_id, v_usuario, 'checkin', v_tamanho,
+                        now() - make_interval(mins => v_espera))
+                returning id into v_registro;
+                update registro_fila set atendido_em = now(), saida_em = now() where id = v_registro;
+            end if;
+        exception when sqlstate 'PR001' then
+            null; -- mesmo usuário na mesma unidade há pouco: ignora esta rodada
+        end;
+    end loop;
+end;
+$$;
+
 -- Consolida o histórico por unidade, dia da semana e hora (base da previsão de melhor horário).
 create or replace procedure prc_consolidar_historico(p_dias integer default 60)
 language plpgsql security definer set search_path = public as $$
@@ -249,7 +305,7 @@ begin
 end;
 $$;
 
--- Recomendação: unidades próximas ordenadas pelo tempo total (deslocamento + espera).
+-- Recomendação: unidades abertas e próximas, ordenadas pelo tempo total (deslocamento + espera).
 -- Deslocamento estimado a 20 km/h, média urbana conservadora.
 create or replace function fn_recomendar_unidades(
     p_latitude        double precision,
@@ -286,6 +342,7 @@ begin
           select fn_distancia_km(p_latitude, p_longitude, u.latitude, u.longitude) as km
       ) d
      where u.ativo
+       and fn_unidade_aberta(u.id)
        and d.km <= p_raio_km
        and (p_tipo_unidade_id is null or u.tipo_unidade_id = p_tipo_unidade_id)
        and (p_servico_id is null or exists (

@@ -56,6 +56,17 @@ for each row execute function trg_fn_registro_antes_inserir();
 create or replace function trg_fn_registro_antes_atualizar() returns trigger
 language plpgsql as $$
 begin
+    -- Chamadas vindas do aplicativo usam sempre o relógio do servidor,
+    -- para que a hora errada de um celular não distorça a espera medida.
+    if current_user = 'authenticated' then
+        if new.atendido_em is not null and old.atendido_em is null then
+            new.atendido_em := now();
+        end if;
+        if new.saida_em is not null and old.saida_em is null then
+            new.saida_em := now();
+        end if;
+    end if;
+
     if new.atendido_em is not null and old.atendido_em is null then
         new.espera_real_min := ceil(extract(epoch from (new.atendido_em - new.chegada_em)) / 60);
         if new.status = 'aguardando' then
