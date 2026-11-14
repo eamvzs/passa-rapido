@@ -330,7 +330,7 @@ returns table (
     espera_media_geral_min integer,
     colaboradores_7_dias   bigint
 )
-language plpgsql stable as $$
+language plpgsql stable security definer set search_path = public as $$
 begin
     return query
     select (select count(*) from unidade where ativo),
