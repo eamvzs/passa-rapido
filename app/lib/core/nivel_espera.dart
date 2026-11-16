@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 /// Faixa de espera de uma unidade, calculada pelo banco.
 enum NivelEspera {
-  semDados('sem_dados', 'Sem dados', Color(0xFF757575), Icons.help_outline),
-  baixa('baixa', 'Fila baixa', Color(0xFF2E7D32), Icons.sentiment_satisfied_alt),
-  moderada('moderada', 'Fila moderada', Color(0xFFF9A825), Icons.sentiment_neutral),
-  alta('alta', 'Fila alta', Color(0xFFEF6C00), Icons.sentiment_dissatisfied),
-  critica('critica', 'Fila muito alta', Color(0xFFC62828), Icons.warning_amber);
+  semDados('sem_dados', 'Sem dados', Color(0xFF667085), Icons.help_outline_rounded),
+  baixa('baixa', 'Fila baixa', Color(0xFF16803C), Icons.sentiment_satisfied_alt_rounded),
+  moderada('moderada', 'Fila moderada', Color(0xFFF2B01E), Icons.sentiment_neutral_rounded),
+  alta('alta', 'Fila alta', Color(0xFFBF5500), Icons.sentiment_dissatisfied_rounded),
+  critica('critica', 'Fila muito alta', Color(0xFFD22F2F), Icons.warning_amber_rounded);
 
   const NivelEspera(this.codigo, this.rotulo, this.cor, this.icone);
 
@@ -16,7 +16,31 @@ enum NivelEspera {
   final IconData icone;
 
   /// Cor do texto que garante contraste sobre [cor].
-  Color get corDoTexto => this == moderada ? Colors.black : Colors.white;
+  Color get corDoTexto => this == moderada ? const Color(0xFF231A00) : Colors.white;
+
+  /// Fundo suave para blocos grandes, onde a cor cheia cansaria a vista.
+  Color fundoSuave(Brightness brilho) =>
+      cor.withValues(alpha: brilho == Brightness.dark ? 0.22 : 0.12);
+
+  /// Cor para texto colorido sobre fundo claro ou escuro, com contraste suficiente.
+  Color corSobreSuperficie(Brightness brilho) {
+    if (brilho == Brightness.dark) {
+      return switch (this) {
+        semDados => const Color(0xFFB4BAC8),
+        baixa => const Color(0xFF6FD694),
+        moderada => const Color(0xFFFFCF5C),
+        alta => const Color(0xFFFFA45C),
+        critica => const Color(0xFFFF8A80),
+      };
+    }
+    return switch (this) {
+      semDados => const Color(0xFF4B5565),
+      baixa => const Color(0xFF12692F),
+      moderada => const Color(0xFF8A5A00),
+      alta => const Color(0xFFB04E00),
+      critica => const Color(0xFFB3261E),
+    };
+  }
 
   static NivelEspera porCodigo(String? codigo) => values.firstWhere(
         (n) => n.codigo == codigo,

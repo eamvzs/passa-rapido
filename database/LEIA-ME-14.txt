@@ -1,0 +1,42 @@
+SCRIPT 14: ACESSIBILIDADE, DENÚNCIAS, MODERAÇÃO E DADO OFICIAL
+==============================================================
+
+Acrescenta: fonte oficial de espera, votos de acessibilidade, denúncia com ocultação automática, moderação, consenso de
+localização, visão por região para a gestão, visões públicas de avisos e avaliações sem o identificador do autor, e
+endurecimento de permissões. Já faz parte de supabase_instalar.sql e supabase_atualizar.sql; pode ser repetido.
+
+1. Aplicar
+   SQL Editor do Supabase: colar database/supabase_atualizar.sql e Run. Aplique ANTES de publicar o app novo: ele lê avisos e
+   avaliações pelas visões que o script cria, e o app antigo deixa de ver essas duas listas depois do script.
+   Conferir:
+     select (select count(*) from vw_relato_publico) as avisos,
+            (select count(*) from vw_gestao_regiao)   as regioes,
+            (select count(*) from configuracao where chave = 'consenso_minimo') as config;
+
+2. Moderador (a seção "Moderação" aparece no Perfil dessa pessoa)
+     insert into moderador (usuario_id) select id from auth.users where email = 'pessoa@exemplo.com';
+     delete from moderador where usuario_id = (select id from auth.users where email = 'pessoa@exemplo.com');   -- remover
+
+3. Espera oficial de um órgão conveniado (somente com a chave de serviço, no servidor do órgão; nunca no app)
+     POST {SUPABASE_URL}/rest/v1/rpc/fn_registrar_espera_oficial
+       cabeçalhos: apikey e Authorization: Bearer <service_role>
+       corpo: {"p_unidade_id": 123, "p_espera_min": 35, "p_origem": "SMS Prefeitura"}
+     POST {SUPABASE_URL}/rest/v1/rpc/fn_registrar_esperas_oficiais        (lote de até 500)
+       corpo: {"p_leituras": [{"unidade_id": 123, "espera_min": 35, "origem": "SMS Prefeitura", "em": "2026-11-16T10:00:00Z"}]}
+   A leitura vale por 30 minutos; depois a unidade volta aos registros dos cidadãos ou à estimativa. O app mostra "Dado oficial".
+
+4. Ajustes (tabela configuracao)
+     update configuracao set valor = 'true' where chave = 'validar_localizacao';   só aceita registro perto da unidade
+     update configuracao set valor = '4'    where chave = 'denuncias_peso_minimo'; exige mais denúncias para ocultar
+     update configuracao set valor = '5'    where chave = 'consenso_minimo';       exige mais pessoas para corrigir localização
+
+5. Configuração do painel do Supabase (Authentication)
+   Senha mínima de 8 caracteres; Site URL e Redirect URLs só com o endereço do site publicado; manter os limites de e-mail e de
+   tentativas de login.
+
+6. Testes
+   Banco que imita o Supabase (papéis anon, authenticated, service_role e schema auth):
+     ./tests/rodar_supabase_local.sh pr_supa 01_schema.sql 02_funcoes.sql 03_triggers.sql 04_seed.sql 05_supabase.sql \
+        07_estrutura_dados_reais.sql 10_cnes.sql 08_dados_reais_base.sql 09_seguranca_e_regras.sql \
+        13_sugestao_correcao.sql 14_melhorias_publicas.sql
+     psql -U postgres -v ON_ERROR_STOP=1 -d pr_supa -f tests/test_melhorias_14.sql        69 verificações

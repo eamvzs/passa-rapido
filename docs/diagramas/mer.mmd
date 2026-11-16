@@ -1,0 +1,20 @@
+erDiagram
+    direction LR
+    TIPO_UNIDADE ||--o{ UNIDADE : classifica
+    UNIDADE }o--o{ SERVICO : oferece
+    UNIDADE ||--o{ HORARIO_FUNCIONAMENTO : funciona
+    UNIDADE ||--|| SITUACAO_UNIDADE : possui
+    UNIDADE ||--o{ HISTORICO_ESPERA : acumula
+    USUARIO ||--o{ REGISTRO_FILA : faz
+    UNIDADE ||--o{ REGISTRO_FILA : recebe
+    USUARIO ||--o{ RELATO : publica
+    UNIDADE ||--o{ RELATO : "e tema de"
+    USUARIO }o--o{ RELATO : confirma
+    USUARIO }o--o{ UNIDADE : acompanha
+    USUARIO }o--o{ UNIDADE : avalia
+    USUARIO ||--o{ NOTIFICACAO : recebe
+    USUARIO ||--o{ MOVIMENTO_PONTOS : acumula
+    USUARIO }o--o{ UNIDADE : "sugere correcao"
+    UNIDADE }o--o{ USUARIO : "tem recurso de acessibilidade votado por"
+    USUARIO }o--o{ RELATO : denuncia
+    UNIDADE ||--o{ ESPERA_OFICIAL : "recebe leitura de orgao"

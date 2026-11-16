@@ -1,0 +1,21 @@
+const { chromium } = require('playwright');
+const { textos, digitar } = require('./lib.js');
+(async () => {
+  const browser = await chromium.launch({ proxy: { server: process.env.HTTPS_PROXY, bypass: 'localhost,127.0.0.1' } });
+  const ctx = await browser.newContext({ viewport: { width: 412, height: 870 }, ignoreHTTPSErrors: true, locale: 'pt-BR', geolocation: { latitude: -23.5394, longitude: -46.4551 }, permissions: ['geolocation'] });
+  await ctx.addInitScript(() => { localStorage.setItem('flutter.apresentacao_vista', 'true'); window.__csp = []; document.addEventListener('securitypolicyviolation', e => window.__csp.push(e.violatedDirective + ' <- ' + e.blockedURI)); });
+  const page = await ctx.newPage();
+  const msgs = []; page.on('console', m => { if (/Content Security Policy|CSP|refused to/i.test(m.text())) msgs.push(m.text().slice(0, 200)); });
+  let tiles = 0, tilesOk = 0, supa = 0; page.on('response', r => { if (/tile\.openstreetmap\.org/.test(r.url())) { tiles++; if (r.status() === 200) tilesOk++; } if (/supabase\.co\/rest/.test(r.url()) && r.status() === 200) supa++; });
+  await page.goto('http://localhost:' + (process.env.PORTA_CSP || 8091) + '/', { waitUntil: 'load' }); await page.waitForTimeout(14000);
+  await page.evaluate(() => document.querySelector('flt-semantics-placeholder')?.click()); await page.waitForTimeout(800);
+  const t = await textos(page);
+  console.log('lista de unidades carregou:', t.some(x => /UPA|UBS|Pronto/.test(x)), '| respostas 200 do Supabase:', supa, '| tiles:', tilesOk + '/' + tiles);
+  await digitar(page, /Buscar/, 'upa 26 de agosto'); await page.waitForTimeout(1500);
+  await page.getByRole('button', { name: /UPA 26 de Agosto/ }).first().click(); await page.waitForTimeout(1500);
+  const violacoes = await page.evaluate(() => window.__csp);
+  console.log('violações de CSP (evento):', violacoes.length ? violacoes.slice(0, 5).join(' ; ') : 'nenhuma');
+  console.log('mensagens de CSP no console:', msgs.length ? msgs.slice(0, 5).join(' ; ') : 'nenhuma');
+  await page.screenshot({ path: 'saida/s_csp.png' });
+  await browser.close();
+})();

@@ -1,0 +1,19 @@
+GLOBAL SOLUTION 2 - CITIZENTECH - ENTREGA
+Projeto: Passa Rápido
+Aluno(a): Eduardo Andrade Martins Vasques
+RM: 556970
+Turma: 3SIOA
+
+Repositório no GitHub (compartilhado com o tutor):
+https://github.com/eamvzs/passa-rapido
+
+Vídeo de pitch comercial (até 3 minutos, YouTube, NÃO LISTADO):
+[colar aqui o link]
+
+Vídeo de pitch técnico (até 5 minutos, YouTube, NÃO LISTADO):
+[colar aqui o link]
+
+Observações:
+- Rotinas de automação em PL/pgSQL (PostgreSQL/Supabase). Confirmação do tutor: [preencher: sim/não/pendente].
+- Instruções de execução: README.txt (raiz do repositório).
+- Documentação: pasta docs/.

@@ -45,6 +45,8 @@ dependencies:
   flutter_tts: ^4.2.5
   shared_preferences: ^2.5.6
   url_launcher: ^6.3.3
+  flutter_localizations:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:
@@ -64,12 +66,16 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Roboto empacotada: o app não depende de baixar a fonte da internet.
+  # Plus Jakarta Sans: fonte aberta (SIL OFL), empacotada no app, sem download em tempo de execução.
   fonts:
-    - family: Roboto
+    - family: Jakarta
       fonts:
-        - asset: assets/fonts/Roboto-Regular.ttf
-        - asset: assets/fonts/Roboto-Medium.ttf
+        - asset: assets/fonts/PlusJakartaSans_400Regular.ttf
+        - asset: assets/fonts/PlusJakartaSans_500Medium.ttf
           weight: 500
-        - asset: assets/fonts/Roboto-Bold.ttf
+        - asset: assets/fonts/PlusJakartaSans_600SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/PlusJakartaSans_700Bold.ttf
           weight: 700
+        - asset: assets/fonts/PlusJakartaSans_800ExtraBold.ttf
+          weight: 800

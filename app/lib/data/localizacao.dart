@@ -19,6 +19,20 @@ class LocalizacaoServico {
     real: false,
   );
 
+  /// Acompanha o deslocamento em primeiro plano. Só emite se a permissão já foi concedida;
+  /// erros do GPS são ignorados para nunca derrubar o app.
+  Stream<Localizacao> acompanhar() async* {
+    try {
+      final permissao = await Geolocator.checkPermission();
+      if (permissao == LocationPermission.denied || permissao == LocationPermission.deniedForever) return;
+      yield* Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 25),
+      ).map((p) => Localizacao(LatLng(p.latitude, p.longitude), real: true)).handleError((_) {});
+    } catch (_) {
+      return;
+    }
+  }
+
   /// Nunca lança erro: sem permissão ou sem GPS, devolve o centro de São Paulo.
   Future<Localizacao> obter() async {
     try {

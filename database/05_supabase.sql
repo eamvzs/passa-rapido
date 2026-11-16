@@ -117,6 +117,7 @@ create extension if not exists pg_cron;
 select cron.schedule('passa-rapido-expirar',    '*/10 * * * *', 'call prc_expirar_registros()');
 select cron.schedule('passa-rapido-consolidar', '15 6 * * *',   'call prc_consolidar_historico(60)');
 
--- Somente para demonstração: movimento simulado a cada 5 minutos.
--- Para desligar: select cron.unschedule('passa-rapido-simulador');
-select cron.schedule('passa-rapido-simulador',  '*/5 * * * *',  'call prc_simular_movimento(4)');
+-- O simulador de movimento (prc_simular_movimento) NÃO é agendado: o app usa apenas dados reais.
+-- Para uma demonstração com movimento falso (usa os usuários fictícios do 04_seed.sql), agende por conta própria:
+--   select cron.schedule('passa-rapido-simulador', '*/5 * * * *', 'call prc_simular_movimento(4)');
+-- Para remover o que a simulação criou: execute 11_remover_simulacao.sql.

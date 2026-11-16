@@ -1,0 +1,16 @@
+# Arquivos de entrega e de conferência gerados, que não fazem parte do código
+*.zip
+comparativo_*.png
+padrao_institucional.png
+/supabase_atualizar.sql
+# Sistema e editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+node_modules/
+*.log
+
+# Saída de compilação do Android
+app/android/build/
+app/android/.gradle/

@@ -23,6 +23,8 @@ class Unidade {
     required this.notaMedia,
     required this.qtdAvaliacoes,
     required this.relatosAtivos,
+    this.origem = 'demonstracao',
+    this.horarioPadrao = true,
   });
 
   final int id;
@@ -48,7 +50,30 @@ class Unidade {
   final int qtdAvaliacoes;
   final int relatosAtivos;
 
-  bool get emTempoReal => fonte == 'tempo_real';
+  /// `cnes` (cadastro oficial do Ministério da Saúde), `openstreetmap` (cadastro colaborativo)
+  /// ou `demonstracao` (dado de exemplo).
+  final String origem;
+
+  /// Verdadeiro quando o horário é o padrão do tipo de unidade, não o publicado pela própria unidade.
+  final bool horarioPadrao;
+
+  bool get dadosReais => origem != 'demonstracao';
+
+  /// Crédito da fonte do cadastro (nome, endereço e localização), exigido pelas licenças dos dados.
+  String? get creditoDoCadastro => switch (origem) {
+        'cnes' => 'Cadastro da unidade: CNES/DATASUS, Ministério da Saúde',
+        'openstreetmap' => 'Cadastro da unidade: © colaboradores do OpenStreetMap',
+        _ => null,
+      };
+
+  /// Espera lida direto do sistema de um órgão conveniado (`oficial`).
+  bool get oficial => fonte == 'oficial';
+
+  /// Fila informada por cidadãos ou lida do órgão: dado real, não estimativa do modelo.
+  bool get emTempoReal => fonte == 'tempo_real' || oficial;
+
+  /// Espera vinda do modelo (histórico estimado), ainda sem registro de cidadão para este horário.
+  bool get estimada => fonte == 'historico';
 
   factory Unidade.deMapa(Map<String, dynamic> m) => Unidade(
         id: m['id'] as int,
@@ -71,6 +96,8 @@ class Unidade {
         notaMedia: (m['nota_media'] as num?)?.toDouble(),
         qtdAvaliacoes: (m['qtd_avaliacoes'] as num?)?.toInt() ?? 0,
         relatosAtivos: (m['relatos_ativos'] as num?)?.toInt() ?? 0,
+        origem: m['origem'] as String? ?? 'demonstracao',
+        horarioPadrao: m['horario_padrao'] as bool? ?? true,
       );
 
   /// Aplica uma atualização em tempo real da tabela `situacao_unidade`.
@@ -95,6 +122,8 @@ class Unidade {
         notaMedia: notaMedia,
         qtdAvaliacoes: qtdAvaliacoes,
         relatosAtivos: relatosAtivos,
+        origem: origem,
+        horarioPadrao: horarioPadrao,
       );
 }
 
@@ -138,6 +167,26 @@ class HorarioFuncionamento {
         abre: (m['abre'] as String).substring(0, 5),
         fecha: (m['fecha'] as String).substring(0, 5),
       );
+}
+
+/// "Abre hoje às 08:00", "Abre amanhã às 08:00" ou "Abre segunda-feira às 08:00"; nulo se não há horário.
+/// `agora` deve estar no fuso da unidade (o app usa o horário do aparelho).
+String? proximaAbertura(List<HorarioFuncionamento> horarios, DateTime agora) {
+  if (horarios.isEmpty) return null;
+  const nomes = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+  final hoje = agora.weekday % 7; // domingo = 0, como no banco
+  final minutosAgora = agora.hour * 60 + agora.minute;
+  for (var desloc = 0; desloc <= 7; desloc++) {
+    final dia = (hoje + desloc) % 7;
+    for (final h in horarios.where((h) => h.diaSemana == dia)) {
+      final partes = h.abre.split(':');
+      final minutosAbre = int.parse(partes[0]) * 60 + int.parse(partes[1]);
+      if (desloc == 0 && minutosAbre <= minutosAgora) continue; // já abriu hoje (ou já passou)
+      final quando = desloc == 0 ? 'hoje' : (desloc == 1 ? 'amanhã' : nomes[dia]);
+      return 'Abre $quando às ${h.abre}';
+    }
+  }
+  return null;
 }
 
 /// Espera média prevista para uma hora do dia (`fn_melhor_horario`).

@@ -1,207 +1,88 @@
-# Modelo de dados do Passa Rápido
+# Modelo de dados
+
+PostgreSQL (Supabase). Os scripts estão em `database/`, numerados na ordem de aplicação (01 a 14). Os diagramas são
+`mer.png` (conceitual) e `der.png` (lógico), com versão `.svg` ampliável e fonte Mermaid em `diagramas/`.
 
 ## MER (modelo conceitual)
 
-Entidades e relacionamentos, sem detalhes de implementação.
+![MER](mer.png)
 
-| Entidade | O que representa |
+| Entidade | Representa |
 |---|---|
-| Tipo de unidade | Categoria do local: UPA, pronto-socorro, UBS, Poupatempo, INSS, CRAS |
-| Unidade | Local de atendimento presencial, com endereço e coordenadas |
-| Serviço | Atendimento oferecido, com os documentos exigidos |
-| Horário de funcionamento | Abertura e fechamento de uma unidade por dia da semana |
-| Usuário | Cidadão que consulta e colabora; acumula pontos e nível de reputação |
-| Registro de fila | Check-in ou observação de um usuário em uma unidade |
-| Situação da unidade | Espera estimada atual de cada unidade, calculada pelo banco |
-| Histórico de espera | Média de espera por unidade, dia da semana e hora |
-| Relato | Aviso sobre a unidade: falta de médico, sistema fora do ar, entre outros |
-| Confirmação de relato | Outro usuário confirmando que o relato procede |
-| Favorito | Unidade acompanhada por um usuário, com limite para alerta |
-| Notificação | Alerta gerado pelo banco para um usuário |
-| Avaliação | Nota de 1 a 5 de um usuário para uma unidade |
-| Movimento de pontos | Extrato de pontos ganhos por colaboração |
+| Tipo de unidade | UPA, Pronto-socorro, UBS, Poupatempo, INSS ou CRAS |
+| Unidade | Local de atendimento: endereço, coordenadas, origem do cadastro (CNES, OpenStreetMap) e se o horário é o padrão do tipo |
+| Serviço | Atendimento oferecido (Pediatria, CNH...) e documentos exigidos |
+| Horário de funcionamento | Abre e fecha de uma unidade por dia da semana |
+| Usuário | Cidadão que consulta e colabora: pontos, nível, confiabilidade, aceite dos termos |
+| Registro de fila | Check-in (na fila) ou observação (retrato do momento) em uma unidade |
+| Situação da unidade | Espera atual calculada pelo banco; é a tabela que o app assina em tempo real |
+| Histórico de espera | Média por unidade, dia da semana e hora; base da previsão |
+| Relato, confirmação | Aviso sobre a unidade, com validade, e a confirmação por outras pessoas |
+| Favorito, notificação | Unidade acompanhada com limite de espera, e o alerta gerado |
+| Avaliação | Nota de 1 a 5 e comentário opcional |
+| Movimento de pontos | Extrato dos pontos ganhos |
+| Sugestão de correção | Pedido de ajuste nos dados de uma unidade, analisado depois |
+| Acessibilidade (voto) | "Tem" ou "não tem" para rampa, elevador, banheiro adaptado, piso tátil, Libras, fila preferencial, vaga PcD |
+| Denúncia, conteúdo oculto | Denúncia de aviso ou avaliação e o texto retirado da área pública |
+| Espera oficial | Leitura de espera enviada por órgão conveniado |
+| Moderador, configuração | Quem modera; chaves de funcionamento (limites, consenso, validação de localização) |
 
-Relacionamentos e cardinalidades:
-
-- Um **tipo de unidade** classifica muitas **unidades** (1:N).
-- Uma **unidade** oferece muitos **serviços**, e um serviço é oferecido em muitas unidades (N:N, resolvido por `unidade_servico`).
-- Uma **unidade** tem até sete **horários de funcionamento**, um por dia da semana (1:N).
-- Uma **unidade** tem exatamente uma **situação** (1:1) e muitas linhas de **histórico de espera** (1:N).
-- Um **usuário** faz muitos **registros de fila**, e cada registro pertence a uma unidade (N:1 para os dois lados).
-- Um **registro de fila** pode indicar um **serviço** (N:1, opcional).
-- Um **usuário** publica muitos **relatos** sobre unidades; um relato recebe muitas **confirmações**, uma por usuário (N:N entre relato e usuário, resolvido por `relato_confirmacao`).
-- Um **usuário** favorita muitas **unidades** e uma unidade é favoritada por muitos usuários (N:N, resolvido por `favorito`).
-- Um **usuário** recebe muitas **notificações**, cada uma sobre uma unidade (1:N).
-- Um **usuário** avalia cada **unidade** no máximo uma vez (N:N com atributo, resolvido por `avaliacao`).
-- Um **usuário** tem muitos **movimentos de pontos** (1:N).
+Cardinalidades principais: tipo 1:N unidade; unidade N:N serviço (`unidade_servico`); unidade 1:N horário; unidade 1:1
+situação e 1:N histórico; usuário 1:N registro; relato N:N usuário (`relato_confirmacao`); usuário N:N unidade por
+`favorito`, `avaliacao` e `acessibilidade_voto`.
 
 ## DER (modelo lógico)
 
-```mermaid
-erDiagram
-    TIPO_UNIDADE ||--o{ UNIDADE : classifica
-    UNIDADE ||--o{ UNIDADE_SERVICO : oferece
-    SERVICO ||--o{ UNIDADE_SERVICO : "é oferecido em"
-    UNIDADE ||--o{ HORARIO_FUNCIONAMENTO : funciona
-    UNIDADE ||--|| SITUACAO_UNIDADE : possui
-    UNIDADE ||--o{ HISTORICO_ESPERA : acumula
-    UNIDADE ||--o{ REGISTRO_FILA : recebe
-    USUARIO ||--o{ REGISTRO_FILA : faz
-    SERVICO |o--o{ REGISTRO_FILA : "refere-se a"
-    UNIDADE ||--o{ RELATO : "é tema de"
-    USUARIO ||--o{ RELATO : publica
-    RELATO ||--o{ RELATO_CONFIRMACAO : recebe
-    USUARIO ||--o{ RELATO_CONFIRMACAO : confirma
-    USUARIO ||--o{ FAVORITO : acompanha
-    UNIDADE ||--o{ FAVORITO : "é acompanhada em"
-    USUARIO ||--o{ NOTIFICACAO : recebe
-    UNIDADE |o--o{ NOTIFICACAO : origina
-    USUARIO ||--o{ AVALIACAO : escreve
-    UNIDADE ||--o{ AVALIACAO : recebe
-    USUARIO ||--o{ MOVIMENTO_PONTOS : acumula
+![DER](der.png)
 
-    TIPO_UNIDADE {
-        smallint id PK
-        text nome UK
-        text icone
-        text cor_hex
-    }
-    UNIDADE {
-        bigint id PK
-        smallint tipo_unidade_id FK
-        text nome
-        text endereco
-        text bairro
-        text cidade
-        char uf
-        double latitude
-        double longitude
-        text telefone
-        boolean ativo
-        timestamptz criado_em
-    }
-    SERVICO {
-        smallint id PK
-        text nome UK
-        text descricao
-        text documentos_necessarios
-    }
-    UNIDADE_SERVICO {
-        bigint unidade_id PK, FK
-        smallint servico_id PK, FK
-    }
-    HORARIO_FUNCIONAMENTO {
-        bigint unidade_id PK, FK
-        smallint dia_semana PK
-        time abre
-        time fecha
-    }
-    USUARIO {
-        uuid id PK
-        text nome
-        integer pontos
-        text nivel
-        timestamptz criado_em
-    }
-    REGISTRO_FILA {
-        bigint id PK
-        bigint unidade_id FK
-        uuid usuario_id FK
-        smallint servico_id FK
-        text tipo
-        text tamanho_fila
-        text status
-        timestamptz chegada_em
-        timestamptz atendido_em
-        timestamptz saida_em
-        integer espera_real_min
-        numeric peso
-    }
-    SITUACAO_UNIDADE {
-        bigint unidade_id PK, FK
-        integer espera_estimada_min
-        text nivel
-        text fonte
-        smallint confianca
-        integer pessoas_aguardando
-        integer qtd_registros
-        timestamptz atualizado_em
-    }
-    HISTORICO_ESPERA {
-        bigint unidade_id PK, FK
-        smallint dia_semana PK
-        smallint hora PK
-        integer media_espera_min
-        integer qtd_amostras
-        timestamptz atualizado_em
-    }
-    RELATO {
-        bigint id PK
-        bigint unidade_id FK
-        uuid usuario_id FK
-        text tipo
-        text descricao
-        integer confirmacoes
-        timestamptz criado_em
-        timestamptz expira_em
-    }
-    RELATO_CONFIRMACAO {
-        bigint relato_id PK, FK
-        uuid usuario_id PK, FK
-        timestamptz criado_em
-    }
-    FAVORITO {
-        uuid usuario_id PK, FK
-        bigint unidade_id PK, FK
-        integer limite_espera_min
-        boolean alerta_ativo
-        timestamptz ultimo_alerta_em
-        timestamptz criado_em
-    }
-    NOTIFICACAO {
-        bigint id PK
-        uuid usuario_id FK
-        bigint unidade_id FK
-        text titulo
-        text mensagem
-        boolean lida
-        timestamptz criado_em
-    }
-    AVALIACAO {
-        bigint id PK
-        bigint unidade_id FK
-        uuid usuario_id FK
-        smallint nota
-        text comentario
-        timestamptz criado_em
-    }
-    MOVIMENTO_PONTOS {
-        bigint id PK
-        uuid usuario_id FK
-        integer pontos
-        text motivo
-        timestamptz criado_em
-    }
-```
+22 tabelas. Chaves primárias, estrangeiras e tipos estão no diagrama; as restrições mais relevantes:
+
+| Restrição | Onde | Efeito |
+|---|---|---|
+| `check` de domínio | `registro_fila.tamanho_fila`, `situacao_unidade.nivel` e `fonte`, `relato.tipo`, `sugestao_correcao.campo`, `denuncia.motivo` | Só aceita os valores previstos |
+| `check (nota between 1 and 5)`, `confiabilidade between 0 and 100`, `espera_min between 0 and 600` | avaliação, usuário, espera oficial | Limites de valor |
+| Chaves compostas | `unidade_servico`, `horario_funcionamento`, `historico_espera`, `relato_confirmacao`, `favorito`, `acessibilidade_voto` | Uma linha por combinação |
+| Únicos parciais | `uq_unidade_osm_id`, `uq_unidade_cnes_id` (`where ... is not null`) | Evitam importar a mesma unidade duas vezes |
+| Índices parciais e por data | `idx_unidade_tipo where ativo`, `idx_registro_aguardando where status = 'aguardando'`, `idx_registro_unidade_chegada`, `idx_relato_unidade_expira` | Consultas só nas linhas que importam |
+| `on delete cascade` | filhos de `usuario` e de `unidade` | Excluir a conta apaga os dados pessoais |
 
 ## Rotinas de automação
 
-| Rotina | Tipo | O que automatiza |
-|---|---|---|
-| `prc_recalcular_situacao` | Procedure | Espera estimada da unidade por média ponderada (reputação, espera medida e idade do registro), com histórico como reserva |
-| `prc_expirar_registros` | Procedure com cursor e tratamento de erro | Encerra check-ins esquecidos e atualiza todas as unidades |
-| `prc_consolidar_historico` | Procedure | Médias por unidade, dia da semana e hora |
-| `fn_melhor_horario` | Function | Previsão de espera por hora e marcação do melhor horário |
-| `fn_recomendar_unidades` | Function | Unidades próximas ordenadas por deslocamento mais espera |
-| `fn_confirmar_relato` | Function com exceções próprias | Confirmação de relato com validações |
-| `fn_painel_geral` | Function | Indicadores gerais do painel |
-| `fn_distancia_km`, `fn_unidade_aberta`, `fn_peso_usuario` e auxiliares | Functions | Distância, horário de funcionamento e reputação |
-| `trg_registro_antes_inserir` | Trigger | Bloqueia registro repetido, aplica o peso do usuário e encerra a fila anterior |
-| `trg_registro_antes_atualizar` | Trigger | Calcula a espera real ao marcar o atendimento |
-| `trg_registro_depois` | Trigger | Recalcula a unidade e credita pontos |
-| `trg_pontos_atualiza_usuario` | Trigger | Atualiza saldo e nível de reputação |
-| `trg_situacao_alerta_favoritos` | Trigger | Gera notificação quando a fila cai abaixo do limite do favorito |
-| `trg_confirmacao_relato`, `trg_relato_pontos`, `trg_avaliacao_pontos` | Triggers | Contador, validade e pontuação de relatos e avaliações |
-| `vw_mapa_unidades`, `vw_indicadores_unidade`, `vw_ranking_colaboradores` | Views | Dados prontos para o mapa, o painel e o ranking |
+Escritas em PL/pgSQL: 31 funções, 7 procedures, 19 gatilhos e 8 views. Descrição de cada uma em
+`descricao-de-classes-e-metodos.md`.
 
-Os testes das rotinas estão em `database/tests/test_rotinas.sql`.
+| Grupo | Rotinas |
+|---|---|
+| Cálculo da fila | `prc_recalcular_situacao` (média ponderada dos registros das últimas 2 h, peso do usuário, decaimento no tempo; dado oficial vale mais), `fn_minutos_por_tamanho`, `fn_nivel_por_minutos`, `fn_peso_usuario` |
+| Manutenção agendada (pg_cron) | `prc_expirar_registros` (a cada 10 min, cursor e exceção por unidade), `prc_consolidar_historico` (diária) |
+| Previsão e busca | `fn_melhor_horario`, `fn_recomendar_unidades`, `fn_distancia_km`, `fn_unidade_aberta` |
+| Colaboração | gatilhos de registro, relato, avaliação e pontos; `fn_confirmar_relato`; `trg_situacao_alerta_favoritos` (alerta de fila baixa) |
+| Moderação e confiança | `fn_listar_sugestoes_pendentes`, `fn_analisar_sugestao`, denúncias e ocultação automática, consenso de localização |
+| Dado oficial | `fn_registrar_espera_oficial`, `fn_registrar_esperas_oficiais` (só com chave de serviço) |
+| Privacidade | `fn_nome_publico`, `excluir_minha_conta`, `vw_relato_publico`, `vw_avaliacao_publica` |
+| Indicadores | `fn_painel_geral`, `fn_meu_impacto`, `vw_mapa_unidades`, `vw_indicadores_unidade`, `vw_gestao_regiao`, `vw_ranking_colaboradores` |
+
+## Segurança por linha
+
+Todas as tabelas têm RLS ligado. O aplicativo usa só a chave pública; o que cada papel pode fazer está no banco.
+
+| Dado | Leitura | Gravação |
+|---|---|---|
+| Unidades, serviços, horários, situação, histórico | Qualquer pessoa | Só rotinas do banco |
+| Avisos e avaliações | Qualquer pessoa, por visões sem o identificador do autor | Usuário autenticado, autor fixado pelo banco |
+| Perfil, registros, favoritos, notificações, pontos | Só o dono | O dono, em colunas liberadas; pontos, peso e situação nunca |
+| Denúncias, texto oculto, moderadores, espera oficial | Ninguém pelo app | Denúncia: o autor; demais: servidor |
+| Moderação | Só quem está em `moderador`, conferido em cada chamada | Idem |
+
+Mais em `seguranca-e-privacidade.md`.
+
+## Testes do banco
+
+| Arquivo | Verificações | Cobre |
+|---|---|---|
+| `tests/test_rotinas.sql` | 19 | situação, check-in, repetição, atendimento, níveis, alerta, expiração, recomendação, melhor horário |
+| `tests/test_regras_09.sql` | 21 | nome público, limites por hora, validação de localização, confiabilidade, exclusão de conta |
+| `tests/test_sugestoes_13.sql` | 18 | sugestões de correção e análise |
+| `tests/test_melhorias_14.sql` | 69 | dado oficial, acessibilidade, denúncias, moderação, consenso, privacidade, permissões e RLS |
+
+Cada arquivo roda numa transação e desfaz tudo ao final.

@@ -1,0 +1,70 @@
+IMPORTAR AS UNIDADES REAIS DE SÃO PAULO
+=======================================
+
+Troca as 23 unidades de demonstração pelas reais: UBS, UPA e pronto-socorro do CNES/DATASUS
+(Ministério da Saúde) e INSS, Poupatempo e CRAS do OpenStreetMap. O importador gera um arquivo
+SQL no seu computador; você cola o arquivo no SQL Editor do Supabase. Todos os scripts podem
+ser repetidos sem duplicar nada.
+
+Antes
+  - O banco já recebeu supabase_instalar.sql (ou supabase_atualizar.sql).
+  - O Flutter está instalado (o comando dart vem junto).
+
+1. Gerar os arquivos (PowerShell, na pasta app; precisa de internet, leva de 2 a 10 minutos)
+     cd C:\caminho\para\passa-rapido\app
+     dart run tool/importar_osm.dart                     gera database\08_unidades_reais.sql
+     dart run tool/importar_cnes.dart --saida ..\database\10_unidades_cnes.sql
+   Cada um mostra um resumo: unidades por tipo e o que foi descartado (sem nome, sem coordenada,
+   repetida, desabilitada, privada sem SUS). Arquivos acima de 400 KB são divididos em partes.
+
+2. Aplicar no Supabase, nesta ordem (um arquivo por vez: copiar, colar, Run)
+     10_cnes.sql                    estrutura do CNES
+     08_dados_reais_base.sql        rotina que completa serviços, horários e histórico
+     08_unidades_reais.sql          unidades do OpenStreetMap (se houver partes, na ordem)
+     10_unidades_cnes.sql           unidades do CNES; desativa as do OSM que o CNES já cobre
+     12_deduplicar_osm_cnes.sql     remove duplicatas de mesmo nome e corrige coordenadas do CNES
+     11_remover_simulacao.sql       remove usuários e filas fictícios: o app passa a usar só dado real
+   Para colar um arquivo grande sem abrir o Bloco de Notas (PowerShell, não cole isto no Supabase):
+     [System.IO.File]::ReadAllText("CAMINHO\ARQUIVO.sql") | Set-Clipboard
+   Depois, no Supabase: Ctrl+A e Ctrl+V. Não use "Get-Content -Raw": em alguns computadores corta o texto.
+
+3. Atualizar o mapa no app.
+
+Se o Overpass estiver lento
+  Rode de novo em alguns minutos (o importador já tenta duas máquinas). Ou baixe o resultado no
+  navegador: em overpass-turbo.eu execute a consulta abaixo, exporte como JSON bruto para
+  app\resposta.json e rode  dart run tool/importar_osm.dart --entrada resposta.json
+
+    [out:json][timeout:180];
+    area["name"="São Paulo"]["boundary"="administrative"]["admin_level"="8"]->.sp;
+    ( nwr["name"~"^(UPA|Unidade de Pronto Atendimento)",i](area.sp);
+      nwr["name"~"Pronto[- ]?Socorro",i](area.sp);
+      nwr["amenity"="hospital"]["emergency"="yes"]["operator:type"~"^(public|government)$"](area.sp);
+      nwr["name"~"^(UBS|Unidade B[aá]sica|Centro de Sa[uú]de)",i](area.sp);
+      nwr["name"~"^AMA([^A-Za-z]|$)"](area.sp);
+      nwr["name"~"Poupatempo",i](area.sp);
+      nwr["name"~"INSS|Previd[eê]ncia Social",i](area.sp);
+      nwr["name"~"CRAS|Centro de Refer[eê]ncia de Assist[eê]ncia Social",i](area.sp); );
+    out center tags;
+
+Voltar aos dados de demonstração
+    update unidade set ativo = true  where origem = 'demonstracao';
+    update unidade set ativo = false where origem in ('openstreetmap', 'cnes');
+
+Atribuição obrigatória
+  INSS, Poupatempo e CRAS: © colaboradores do OpenStreetMap, licença ODbL 1.0 (openstreetmap.org/copyright).
+  UBS, UPA e pronto-socorro: CNES/DATASUS, Ministério da Saúde (dados abertos).
+  O app e a documentação mantêm essas atribuições.
+
+Limites
+  - Nomes, endereços e coordenadas podem estar desatualizados. O CNES às vezes traz coordenada padrão
+    (centro da cidade) ou nome sem acento; o script 12 corrige as que têm correspondente no OSM.
+  - O horário de funcionamento é o padrão do tipo de unidade (UPA e pronto-socorro 24 h; demais de segunda
+    a sexta, 8h às 17h; Poupatempo também sábado de manhã), marcado em "horario_padrao".
+  - As filas não são dado real: vêm dos cidadãos que usam o app. O histórico inicial é uma curva estimada
+    por tipo e hora, com 0 amostras, até haver registros; depois, prc_consolidar_historico a substitui por médias reais.
+  - Não há fonte pública nacional de tempo de espera para esses serviços.
+
+Teste do importador (sem internet; dentro da pasta app)
+    bash tool/teste_importador/rodar.sh          OpenStreetMap, com servidor Overpass falso
+    bash tool/teste_importador/rodar_cnes.sh     CNES, com API falsa

@@ -1,0 +1,212 @@
+erDiagram
+    direction LR
+    TIPO_UNIDADE ||--o{ UNIDADE : classifica
+    UNIDADE ||--o{ UNIDADE_SERVICO : oferece
+    SERVICO ||--o{ UNIDADE_SERVICO : "e oferecido em"
+    UNIDADE ||--o{ HORARIO_FUNCIONAMENTO : funciona
+    UNIDADE ||--|| SITUACAO_UNIDADE : possui
+    UNIDADE ||--o{ HISTORICO_ESPERA : acumula
+    UNIDADE ||--o{ REGISTRO_FILA : recebe
+    USUARIO ||--o{ REGISTRO_FILA : faz
+    SERVICO |o--o{ REGISTRO_FILA : "refere-se a"
+    UNIDADE ||--o{ RELATO : "e tema de"
+    USUARIO ||--o{ RELATO : publica
+    RELATO ||--o{ RELATO_CONFIRMACAO : recebe
+    USUARIO ||--o{ RELATO_CONFIRMACAO : confirma
+    USUARIO ||--o{ FAVORITO : acompanha
+    UNIDADE ||--o{ FAVORITO : "e acompanhada em"
+    USUARIO ||--o{ NOTIFICACAO : recebe
+    UNIDADE |o--o{ NOTIFICACAO : origina
+    USUARIO ||--o{ AVALIACAO : escreve
+    UNIDADE ||--o{ AVALIACAO : recebe
+    USUARIO ||--o{ MOVIMENTO_PONTOS : acumula
+    USUARIO ||--o{ SUGESTAO_CORRECAO : sugere
+    UNIDADE ||--o{ SUGESTAO_CORRECAO : "recebe correcao"
+    UNIDADE ||--o{ ESPERA_OFICIAL : "recebe leitura oficial"
+    UNIDADE ||--o{ ACESSIBILIDADE_VOTO : "tem recurso votado"
+    USUARIO ||--o{ ACESSIBILIDADE_VOTO : vota
+    USUARIO ||--o{ DENUNCIA : denuncia
+    USUARIO |o--o| MODERADOR : "pode ser"
+
+    TIPO_UNIDADE {
+        smallint id PK
+        text nome UK
+        text icone
+        text cor_hex
+    }
+    UNIDADE {
+        bigint id PK
+        smallint tipo_unidade_id FK
+        text nome
+        text endereco
+        text bairro
+        text cidade
+        char uf
+        double latitude
+        double longitude
+        text telefone
+        boolean ativo
+        timestamptz criado_em
+        text origem "demonstracao, openstreetmap ou cnes"
+        bigint osm_id UK "parcial: so quando nao nulo"
+        bigint cnes_id UK "parcial: so quando nao nulo"
+        boolean horario_padrao
+    }
+    SERVICO {
+        smallint id PK
+        text nome UK
+        text descricao
+        text documentos_necessarios
+    }
+    UNIDADE_SERVICO {
+        bigint unidade_id PK, FK
+        smallint servico_id PK, FK
+    }
+    HORARIO_FUNCIONAMENTO {
+        bigint unidade_id PK, FK
+        smallint dia_semana PK
+        time abre
+        time fecha
+    }
+    USUARIO {
+        uuid id PK
+        text nome
+        integer pontos
+        text nivel
+        timestamptz criado_em
+        smallint confiabilidade "0 a 100"
+        timestamptz aceitou_termos_em
+    }
+    REGISTRO_FILA {
+        bigint id PK
+        bigint unidade_id FK
+        uuid usuario_id FK
+        smallint servico_id FK
+        text tipo
+        text tamanho_fila
+        text status
+        timestamptz chegada_em
+        timestamptz atendido_em
+        timestamptz saida_em
+        integer espera_real_min
+        numeric peso
+        double latitude
+        double longitude
+    }
+    SITUACAO_UNIDADE {
+        bigint unidade_id PK, FK
+        integer espera_estimada_min
+        text nivel
+        text fonte
+        smallint confianca
+        integer pessoas_aguardando
+        integer qtd_registros
+        timestamptz atualizado_em
+    }
+    HISTORICO_ESPERA {
+        bigint unidade_id PK, FK
+        smallint dia_semana PK
+        smallint hora PK
+        integer media_espera_min
+        integer qtd_amostras "0 = estimativa de modelo"
+        timestamptz atualizado_em
+    }
+    RELATO {
+        bigint id PK
+        bigint unidade_id FK
+        uuid usuario_id FK
+        text tipo
+        text descricao
+        integer confirmacoes
+        timestamptz criado_em
+        timestamptz expira_em
+        text autor "nome publico"
+    }
+    RELATO_CONFIRMACAO {
+        bigint relato_id PK, FK
+        uuid usuario_id PK, FK
+        timestamptz criado_em
+    }
+    FAVORITO {
+        uuid usuario_id PK, FK
+        bigint unidade_id PK, FK
+        integer limite_espera_min
+        boolean alerta_ativo
+        timestamptz ultimo_alerta_em
+        timestamptz criado_em
+    }
+    NOTIFICACAO {
+        bigint id PK
+        uuid usuario_id FK
+        bigint unidade_id FK
+        text titulo
+        text mensagem
+        boolean lida
+        timestamptz criado_em
+    }
+    AVALIACAO {
+        bigint id PK
+        bigint unidade_id FK
+        uuid usuario_id FK
+        smallint nota
+        text comentario
+        timestamptz criado_em
+        text autor "nome publico"
+    }
+    MOVIMENTO_PONTOS {
+        bigint id PK
+        uuid usuario_id FK
+        integer pontos
+        text motivo
+        timestamptz criado_em
+    }
+    SUGESTAO_CORRECAO {
+        bigint id PK
+        bigint unidade_id FK
+        uuid usuario_id FK
+        text campo "localizacao, telefone, endereco, nome, fechada, horario ou outro"
+        text descricao
+        double latitude
+        double longitude
+        text status "pendente, aceita ou recusada"
+        timestamptz criado_em
+        timestamptz analisado_em
+    }
+    ESPERA_OFICIAL {
+        bigint id PK
+        bigint unidade_id FK
+        integer espera_min "0 a 600"
+        text origem "orgao que enviou"
+        timestamptz registrado_em
+    }
+    ACESSIBILIDADE_VOTO {
+        bigint unidade_id PK, FK
+        uuid usuario_id PK, FK
+        text recurso PK "rampa, elevador, banheiro_adaptado, piso_tatil, libras, fila_preferencial, vaga_pcd"
+        boolean existe
+        timestamptz atualizado_em
+    }
+    DENUNCIA {
+        bigint id PK
+        text alvo "relato ou avaliacao"
+        bigint alvo_id
+        uuid usuario_id FK
+        text motivo "falso, ofensivo, spam ou outro"
+        boolean resolvida
+        timestamptz criado_em
+    }
+    CONTEUDO_OCULTO {
+        text alvo PK
+        bigint alvo_id PK
+        text texto "texto retirado da area publica"
+        timestamptz oculto_em
+    }
+    MODERADOR {
+        uuid usuario_id PK, FK
+        timestamptz desde
+    }
+    CONFIGURACAO {
+        text chave PK
+        text valor
+        text descricao
+    }

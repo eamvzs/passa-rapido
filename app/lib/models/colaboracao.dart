@@ -1,3 +1,4 @@
+import '../core/formatos.dart';
 import '../core/nivel_espera.dart';
 
 /// Check-in ou observação do usuário em uma unidade.
@@ -45,7 +46,7 @@ class Relato {
   const Relato({
     required this.id,
     required this.unidadeId,
-    required this.usuarioId,
+    required this.proprio,
     required this.autor,
     required this.tipo,
     required this.descricao,
@@ -55,7 +56,9 @@ class Relato {
 
   final int id;
   final int unidadeId;
-  final String usuarioId;
+
+  /// O aviso é da própria pessoa que está vendo (o banco calcula; o identificador do autor não sai do servidor).
+  final bool proprio;
   final String autor;
   final String tipo;
   final String? descricao;
@@ -78,8 +81,8 @@ class Relato {
   factory Relato.deMapa(Map<String, dynamic> m) => Relato(
         id: m['id'] as int,
         unidadeId: m['unidade_id'] as int,
-        usuarioId: m['usuario_id'] as String,
-        autor: (m['usuario'] as Map<String, dynamic>?)?['nome'] as String? ?? 'Cidadão',
+        proprio: m['proprio'] as bool? ?? false,
+        autor: m['autor'] as String? ?? 'Cidadão',
         tipo: m['tipo'] as String,
         descricao: m['descricao'] as String?,
         confirmacoes: m['confirmacoes'] as int? ?? 0,
@@ -88,17 +91,33 @@ class Relato {
 }
 
 class Avaliacao {
-  const Avaliacao({required this.autor, required this.usuarioId, required this.nota, this.comentario, required this.criadoEm});
+  const Avaliacao({
+    this.id,
+    required this.autor,
+    this.proprio = false,
+    required this.nota,
+    this.comentario,
+    this.oculta = false,
+    required this.criadoEm,
+  });
 
+  final int? id;
   final String autor;
-  final String usuarioId;
+
+  /// A avaliação é da própria pessoa que está vendo.
+  final bool proprio;
   final int nota;
   final String? comentario;
+
+  /// Comentário retirado depois de denúncias de várias pessoas; a nota continua valendo.
+  final bool oculta;
   final DateTime criadoEm;
 
   factory Avaliacao.deMapa(Map<String, dynamic> m) => Avaliacao(
-        autor: (m['usuario'] as Map<String, dynamic>?)?['nome'] as String? ?? 'Cidadão',
-        usuarioId: m['usuario_id'] as String,
+        id: m['id'] as int?,
+        oculta: m['oculta'] as bool? ?? false,
+        autor: m['autor'] as String? ?? 'Cidadão',
+        proprio: m['proprio'] as bool? ?? false,
         nota: m['nota'] as int,
         comentario: m['comentario'] as String?,
         criadoEm: DateTime.parse(m['criado_em'] as String).toLocal(),
@@ -149,12 +168,21 @@ class Notificacao {
 }
 
 class Perfil {
-  const Perfil({required this.id, required this.nome, required this.pontos, required this.nivel});
+  const Perfil({
+    required this.id,
+    required this.nome,
+    required this.pontos,
+    required this.nivel,
+    this.confiabilidade = 50,
+  });
 
   final String id;
   final String nome;
   final int pontos;
   final String nivel;
+
+  /// De 0 a 100: o quanto a fila que a pessoa informa concorda com a espera que ela mede.
+  final int confiabilidade;
 
   static const rotulosNivel = {
     'iniciante': 'Iniciante',
@@ -182,6 +210,7 @@ class Perfil {
         nome: m['nome'] as String,
         pontos: m['pontos'] as int? ?? 0,
         nivel: m['nivel'] as String? ?? 'iniciante',
+        confiabilidade: (m['confiabilidade'] as num?)?.toInt() ?? 50,
       );
 }
 
@@ -252,4 +281,249 @@ class IndicadorUnidade {
         esperaMediaMin: (m['espera_media_min'] as num?)?.toInt(),
         horaPico: (m['hora_pico'] as num?)?.toInt(),
       );
+}
+
+
+/// Recursos de acessibilidade física que as pessoas confirmam em cada unidade.
+enum RecursoDeAcessibilidade {
+  rampa('rampa', 'Rampa de acesso'),
+  elevador('elevador', 'Elevador'),
+  banheiroAdaptado('banheiro_adaptado', 'Banheiro adaptado'),
+  pisoTatil('piso_tatil', 'Piso tátil'),
+  libras('libras', 'Atendimento em Libras'),
+  filaPreferencial('fila_preferencial', 'Fila preferencial'),
+  vagaPcd('vaga_pcd', 'Vaga para pessoa com deficiência');
+
+  const RecursoDeAcessibilidade(this.codigo, this.rotulo);
+
+  final String codigo;
+  final String rotulo;
+
+  static RecursoDeAcessibilidade? porCodigo(String? codigo) {
+    for (final r in values) {
+      if (r.codigo == codigo) return r;
+    }
+    return null;
+  }
+}
+
+/// Quantas pessoas disseram que o recurso existe e quantas disseram que não.
+class ContagemDeRecurso {
+  const ContagemDeRecurso({required this.recurso, required this.sim, required this.nao});
+
+  final RecursoDeAcessibilidade recurso;
+  final int sim;
+  final int nao;
+
+  int get total => sim + nao;
+
+  /// Só vale como "existe" quando há mais confirmações que negativas.
+  bool get existe => sim > nao;
+  bool get inexiste => nao > sim;
+
+  String get resumo {
+    if (total == 0) return 'Sem confirmação ainda';
+    if (existe) return sim == 1 ? 'Confirmado por 1 pessoa' : 'Confirmado por $sim pessoas';
+    if (inexiste) return nao == 1 ? '1 pessoa diz que não tem' : '$nao pessoas dizem que não tem';
+    return 'Opiniões divididas';
+  }
+
+  static ContagemDeRecurso? deMapa(Map<String, dynamic> m) {
+    final recurso = RecursoDeAcessibilidade.porCodigo(m['recurso'] as String?);
+    if (recurso == null) return null;
+    return ContagemDeRecurso(recurso: recurso, sim: (m['sim'] as num).toInt(), nao: (m['nao'] as num).toInt());
+  }
+}
+
+/// Contribuição da pessoa nos últimos 7 dias.
+class ImpactoSemanal {
+  const ImpactoSemanal({
+    required this.registros,
+    required this.unidades,
+    required this.pontos,
+    required this.avisos,
+    required this.avaliacoes,
+    required this.sugestoesAceitas,
+  });
+
+  final int registros;
+  final int unidades;
+  final int pontos;
+  final int avisos;
+  final int avaliacoes;
+  final int sugestoesAceitas;
+
+  int get contribuicoes => registros + avisos + avaliacoes + sugestoesAceitas;
+
+  factory ImpactoSemanal.deMapa(Map<String, dynamic> m) => ImpactoSemanal(
+        registros: (m['registros_7d'] as num).toInt(),
+        unidades: (m['unidades_7d'] as num).toInt(),
+        pontos: (m['pontos_7d'] as num).toInt(),
+        avisos: (m['avisos_7d'] as num).toInt(),
+        avaliacoes: (m['avaliacoes_7d'] as num).toInt(),
+        sugestoesAceitas: (m['sugestoes_aceitas'] as num).toInt(),
+      );
+}
+
+/// Sugestão de correção à espera de análise (tela de moderação).
+class SugestaoPendente {
+  const SugestaoPendente({
+    required this.id,
+    required this.unidadeId,
+    required this.unidadeNome,
+    required this.unidadeEndereco,
+    required this.campo,
+    required this.descricao,
+    required this.autor,
+    required this.apoios,
+    required this.criadoEm,
+    this.latitude,
+    this.longitude,
+    this.unidadeLatitude,
+    this.unidadeLongitude,
+  });
+
+  final int id;
+  final int unidadeId;
+  final String unidadeNome;
+  final String unidadeEndereco;
+  final String campo;
+  final String descricao;
+  final String autor;
+
+  /// Outras sugestões pendentes sobre o mesmo item da mesma unidade.
+  final int apoios;
+  final DateTime criadoEm;
+  final double? latitude;
+  final double? longitude;
+  final double? unidadeLatitude;
+  final double? unidadeLongitude;
+
+  static const rotulosDoCampo = {
+    'localizacao': 'Localização no mapa',
+    'telefone': 'Telefone',
+    'endereco': 'Endereço',
+    'nome': 'Nome',
+    'fechada': 'Unidade fechada',
+    'horario': 'Horário de funcionamento',
+    'outro': 'Outro',
+  };
+
+  String get rotuloDoCampo => rotulosDoCampo[campo] ?? campo;
+
+  factory SugestaoPendente.deMapa(Map<String, dynamic> m) => SugestaoPendente(
+        id: m['id'] as int,
+        unidadeId: m['unidade_id'] as int,
+        unidadeNome: m['unidade_nome'] as String,
+        unidadeEndereco: m['unidade_endereco'] as String,
+        campo: m['campo'] as String,
+        descricao: m['descricao'] as String,
+        autor: m['autor'] as String? ?? 'Cidadão',
+        apoios: (m['apoios'] as num?)?.toInt() ?? 0,
+        criadoEm: DateTime.parse(m['criado_em'] as String).toLocal(),
+        latitude: (m['latitude'] as num?)?.toDouble(),
+        longitude: (m['longitude'] as num?)?.toDouble(),
+        unidadeLatitude: (m['unidade_latitude'] as num?)?.toDouble(),
+        unidadeLongitude: (m['unidade_longitude'] as num?)?.toDouble(),
+      );
+}
+
+/// Conteúdo denunciado (aviso ou avaliação) à espera da decisão do moderador.
+class DenunciaPendente {
+  const DenunciaPendente({
+    required this.alvo,
+    required this.alvoId,
+    required this.unidadeNome,
+    required this.texto,
+    required this.denuncias,
+    required this.motivos,
+    required this.oculto,
+  });
+
+  final String alvo;
+  final int alvoId;
+  final String? unidadeNome;
+  final String texto;
+  final int denuncias;
+  final String motivos;
+  final bool oculto;
+
+  String get rotuloDoAlvo => alvo == 'relato' ? 'Aviso' : 'Avaliação';
+
+  factory DenunciaPendente.deMapa(Map<String, dynamic> m) => DenunciaPendente(
+        alvo: m['alvo'] as String,
+        alvoId: (m['alvo_id'] as num).toInt(),
+        unidadeNome: m['unidade_nome'] as String?,
+        texto: m['texto'] as String? ?? '',
+        denuncias: (m['denuncias'] as num).toInt(),
+        motivos: m['motivos'] as String? ?? '',
+        oculto: m['oculto'] as bool? ?? false,
+      );
+}
+
+/// Uma linha da visão por região: bairro e tipo de unidade, com números agregados.
+class RegiaoDaGestao {
+  const RegiaoDaGestao({
+    required this.cidade,
+    required this.bairro,
+    required this.tipo,
+    required this.unidades,
+    required this.abertasAgora,
+    required this.esperaMediaMin,
+    required this.unidadesComFilaReal,
+    required this.registros7Dias,
+    required this.horaPico,
+    required this.esperaPicoMin,
+  });
+
+  final String cidade;
+  final String bairro;
+  final String tipo;
+  final int unidades;
+  final int abertasAgora;
+  final int? esperaMediaMin;
+  final int unidadesComFilaReal;
+  final int registros7Dias;
+  final int? horaPico;
+  final int? esperaPicoMin;
+
+  /// Sem nenhuma unidade com fila real: todo número da linha é estimativa do modelo.
+  bool get somenteEstimativa => unidadesComFilaReal == 0;
+
+  factory RegiaoDaGestao.deMapa(Map<String, dynamic> m) => RegiaoDaGestao(
+        cidade: m['cidade'] as String,
+        bairro: m['bairro'] as String,
+        tipo: m['tipo'] as String,
+        unidades: (m['unidades'] as num).toInt(),
+        abertasAgora: (m['abertas_agora'] as num).toInt(),
+        esperaMediaMin: (m['espera_media_min'] as num?)?.toInt(),
+        unidadesComFilaReal: (m['unidades_com_fila_real'] as num).toInt(),
+        registros7Dias: (m['registros_7d'] as num?)?.toInt() ?? 0,
+        horaPico: (m['hora_pico'] as num?)?.toInt(),
+        esperaPicoMin: (m['espera_pico_min'] as num?)?.toInt(),
+      );
+}
+
+/// Texto CSV (separador ponto e vírgula, aberto direto no Excel em português) da visão por região.
+/// Campos de texto são entre aspas e iniciados por fórmula (=, +, -, @) ganham apóstrofo, para não executar
+/// fórmula ao abrir a planilha.
+String regioesParaCsv(List<RegiaoDaGestao> regioes) {
+  final linhas = <String>[
+    'cidade;bairro;tipo;unidades;abertas_agora;espera_media_min;unidades_com_fila_real;registros_7_dias;hora_pico;espera_pico_min;somente_estimativa',
+    for (final r in regioes)
+      [
+        campoCsv(r.cidade),
+        campoCsv(r.bairro),
+        campoCsv(r.tipo),
+        r.unidades,
+        r.abertasAgora,
+        r.esperaMediaMin ?? '',
+        r.unidadesComFilaReal,
+        r.registros7Dias,
+        r.horaPico ?? '',
+        r.esperaPicoMin ?? '',
+        r.somenteEstimativa ? 'sim' : 'nao',
+      ].join(';'),
+  ];
+  return linhas.join('\n');
 }

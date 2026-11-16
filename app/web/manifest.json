@@ -1,12 +1,12 @@
 {
-    "name": "passa_rapido",
-    "short_name": "passa_rapido",
+    "name": "Passa Rápido",
+    "short_name": "Passa Rápido",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#F2F5F9",
+    "theme_color": "#1B3A6B",
+    "description": "Tempo de espera em serviços públicos, em tempo real.",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {
@@ -31,5 +31,6 @@
             "type": "image/png",
             "purpose": "maskable"
         }
-    ]
+    ],
+    "lang": "pt-BR"
 }
