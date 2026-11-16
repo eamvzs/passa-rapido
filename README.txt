@@ -136,7 +136,8 @@ Testes
   docs/pesquisa-de-mercado.md                   soluções existentes e o que o app aproveita
   docs/roadmap.md                               o que não foi feito e próximos passos
   docs/atendimento-ao-edital.md                 requisitos do edital e onde estão
-  docs/videos/                                  roteiros dos pitches
+  docs/videos/                                  roteiros dos pitches (md e PDF)
+  docs/apresentacao/                            apresentação comercial interativa (abrir no navegador)
   docs/telas/, der.png, mer.png                 capturas e diagramas
 
 
