@@ -14,6 +14,6 @@ Vídeo de pitch técnico (até 5 minutos, YouTube, NÃO LISTADO):
 [colar aqui o link]
 
 Observações:
-- Rotinas de automação em PL/pgSQL (PostgreSQL/Supabase). Confirmação do tutor: [preencher: sim/não/pendente].
+- Rotinas de automação em PL/pgSQL (PostgreSQL/Supabase). Confirmado pelo tutor.
 - Instruções de execução: README.txt (raiz do repositório).
 - Documentação: pasta docs/.

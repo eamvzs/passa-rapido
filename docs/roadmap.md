@@ -12,7 +12,7 @@ cópia offline, moderação, denúncia, visão para a gestão e entrada de dado 
 | INSS, Poupatempo e CRAS com cobertura parcial | Vêm do OpenStreetMap; horários são os padrões do tipo |
 | Sem APK; Safari e Android reais sem teste | Versão web verificada no navegador |
 | Triagem sem revisão clínica; termos sem revisão jurídica | Obrigatório antes de uso real |
-| Rotinas em PL/pgSQL (PostgreSQL), não em PL/SQL (Oracle) | Confirmação do tutor pendente |
+| Rotinas em PL/pgSQL (PostgreSQL), não em PL/SQL (Oracle) | Aceito pelo tutor |
 | Sem notificação com o app fechado, sem WhatsApp | Exigem Firebase, conta Apple Developer e provedor de mensagens |
 | Sem Libras em vídeo, sem portabilidade de dados | Previstos |
 
@@ -24,4 +24,3 @@ cópia offline, moderação, denúncia, visão para a gestão e entrada de dado 
 5. Notificação com o app fechado e canal de WhatsApp ou SMS.
 6. Provedor de mapa contratado; consulta por região do mapa para escalar além de uma cidade.
 7. Reduzir a precisão da coordenada gravada e criar exportação dos dados do usuário.
-8. Porte das rotinas para Oracle PL/SQL, se o tutor exigir.

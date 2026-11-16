@@ -65,10 +65,9 @@ PL/pgSQL    As regras de negócio (cálculo da espera, pontos, alertas, limites,
             ficam em procedures, funções e gatilhos no banco, então valem para qualquer
             cliente e o app não grava pontos, peso nem hora de chegada.
 
-DIVERGÊNCIA COM O EDITAL: o edital pede PL/SQL (Oracle). O banco do projeto é
-PostgreSQL, cuja linguagem procedural é o PL/pgSQL, com os mesmos recursos (blocos,
-cursores, exceções, funções, procedures e gatilhos) e sintaxe muito próxima. A
-confirmação do tutor está pendente: ENTREGA-links.txt.
+PL/SQL: o edital cita PL/SQL (Oracle). O banco do projeto é PostgreSQL, cuja linguagem
+procedural é o PL/pgSQL, com os mesmos recursos (blocos, cursores, exceções, funções,
+procedures e gatilhos) e sintaxe muito próxima. O tutor confirmou que atende.
 
 Detalhes em docs/tecnologias-e-beneficios.md e docs/gerenciamento-de-memoria-e-eficiencia.md.
 
